@@ -237,16 +237,16 @@ public class RayCaster {
 
                     g2.setColor(getWallColor(map[gridPointToDraw.y][gridPointToDraw.x]));
 
-                    System.out.println("column = " + rayColumnIndex + "/walltype=" +map[gridPointToDraw.y][gridPointToDraw.x] + "/angle=" + angle + "/grid.x=" + gridPointToDraw.x + "/grid.y="+gridPointToDraw.y);
+                    System.out.println("column = " + rayColumnIndex + "/walltype=" +map[gridPointToDraw.y][gridPointToDraw.x] + "/angle=" + angle + "/grid.x=" + gridPointToDraw.x + "/grid.y="+gridPointToDraw.y + "/distance="+distance);
 
                     if (isWall && distance > 0) {
 
-                        int wallHeight = (CELL_SIZE / distance * distanceProjectionPlane);
-                        int center = 200;
+                        int wallHeight = (CELL_SIZE * distanceProjectionPlane/distance);
+                        int center = 100;
                         int topOfWall = center + wallHeight;
                         int bottomOfWall = center - wallHeight;
 
-                        g2.drawLine(1100 - rayColumnIndex, 100, 1100-rayColumnIndex, 200);
+                        g2.drawLine(1100 - rayColumnIndex, topOfWall, 1100-rayColumnIndex, bottomOfWall);
                     }
                 }
 
