@@ -9,6 +9,13 @@ public class RayCaster {
     private static final int GRID_COLUMNS= 10;
     private static final int GRID_ROWS = 8;
     private static final int MAP_WALL_DEFAULT = 1;
+    private static final int MAP_WALL_TWO  = 2;
+    private static final int MAP_WALL_THREE  = 3;
+    private static final int MAP_WALL_FOUR  = 4;
+    private static final int MAP_WALL_FIVE  = 5;
+    private static final int MAP_WALL_SIX = 6;
+    private static final int MAP_WALL_SEVEN  = 7;
+
     private Point horizontalGridPoint;
     private Point verticalGridPoint;
     private HorizontalFacingDirection horizontalFacingDirection;
@@ -46,11 +53,11 @@ public class RayCaster {
     }
 
     private int[][] map = new int[][]{
-            { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+            { 1, 1, 1, 2, 3, 4, 5, 1, 1, 1 },
             { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
             { 1, 0, 1, 1, 0, 0, 1, 0, 0, 1 },
             { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
-            { 1, 0, 0, 1, 1, 1, 1, 0, 0, 1 },
+            { 1, 0, 0, 6, 7, 6, 7, 0, 0, 1 },
             { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
             { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
             { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
@@ -104,14 +111,10 @@ public class RayCaster {
             drawMap(g2);
             drawPlayer(g2);
             printStatistics(g2);
-            drawPlayerView(g2);
+            drawPOV(60d,1, 320, g2);
         }
 
         private void printStatistics(Graphics2D g2) {
-
-
-
-            // g2.drawString(String.format("Looking at gridX=%d, gridY=%d", getGridPointLookingAt(60).x, getGridPointLookingAt(60).y), 800, 600);
             g2.drawString(String.format("Player grid x=%d, y=%d", (playerX/CELL_SIZE ), (playerY/CELL_SIZE )), 800, 620);
             g2.drawString(String.format("Player x=%d, y=%d", playerX, playerY), 800, 640);
             g2.drawString(String.format("h.x=%d, h.y=%d", statistics.getHorizontalGridHitX(), statistics.getHorizontalGridHitY()), 800, 660);
@@ -126,102 +129,143 @@ public class RayCaster {
          * The determination is done by first checking the horizontal wall/line which is hit and the vertical wall/line which is hit.
          * The distance is then compared and the closest wall grid point is returned.
          *
-         * @param castDegree a single degree representing the line coming from the player being cast
-         * @return point holding the grid x, y coordinates we're looking at from our player POV
+         * @param rayColumnStart starting degree for the POV
+         * @param rayColumnStop  ending degree for the POV
+         * @param g2              graphics component to draw on
          */
-        private Point getGridPointLookingAt(int castDegree) {
-            double radians = Math.toRadians(castDegree);
-            int nextY = 0;
+        private void drawPOV(double fovAngle, int rayColumnStart, int rayColumnStop, Graphics2D g2) {
+            double radians;
+            int nextY=0;
+            boolean isWall;
+            Point gridPointToDraw = new Point();
+            int distance = 1;
+            int distanceProjectionPlane = (int) ((rayColumnStop / 2) / Math.tan(fovAngle/2));
 
-            if (castDegree > 0 && castDegree < 180) {
-                horizontalFacingDirection = HorizontalFacingDirection.UP;
-                nextY = -CELL_SIZE;
+            for (int rayColumnIndex=rayColumnStart; rayColumnIndex<rayColumnStop; rayColumnIndex++) {
+                int angle = (int) (fovAngle + (rayColumnIndex * (fovAngle/rayColumnStop)));
 
-            } else if (castDegree > 180 && castDegree < 360) {
-                horizontalFacingDirection = HorizontalFacingDirection.DOWN;
-                nextY = CELL_SIZE;
-            }
+                radians = Math.toRadians(angle);
 
-            if (castDegree > 90 && castDegree < 270) {
-                verticalFacingDirection = VerticalFacingDirection.LEFT;
-            } else {
-                verticalFacingDirection = VerticalFacingDirection.RIGHT;
-            }
+                if (angle > 0 && angle < 180) {
+                    horizontalFacingDirection = HorizontalFacingDirection.UP;
+                    nextY = -CELL_SIZE;
 
-            // Horizontal wall searching
-            // Determine horizontal Y
-            int firstHorizontalIntersectionY = (playerY / CELL_SIZE ) * (CELL_SIZE ) + (horizontalFacingDirection == HorizontalFacingDirection.UP ? -1 : CELL_SIZE);
-            horizontalGridPoint.y = firstHorizontalIntersectionY / CELL_SIZE;
+                } else if (angle > 180 && angle < 360) {
+                    horizontalFacingDirection = HorizontalFacingDirection.DOWN;
+                    nextY = CELL_SIZE;
+                }
 
-            // Determine horizontal X
-            int firstHorizontalIntersectionX = (int) (playerX + (playerY - firstHorizontalIntersectionY) / Math.tan(radians));
-            horizontalGridPoint.x = firstHorizontalIntersectionX / CELL_SIZE;
+                if (angle > 90 && angle < 270) {
+                    verticalFacingDirection = VerticalFacingDirection.LEFT;
+                } else {
+                    verticalFacingDirection = VerticalFacingDirection.RIGHT;
+                }
 
-            int nextX = (int) (CELL_SIZE/Math.tan(radians));
-
-            while (horizontalGridPoint.y >= 0 && horizontalGridPoint.y < GRID_COLUMNS && map[horizontalGridPoint.y][horizontalGridPoint.x] != MAP_WALL_DEFAULT) {
-
-
-                firstHorizontalIntersectionX += nextX;
-                firstHorizontalIntersectionY += nextY;
-
-                horizontalGridPoint.x = firstHorizontalIntersectionX / CELL_SIZE;
+                // Horizontal wall searching
+                // Determine horizontal Y
+                int firstHorizontalIntersectionY = (playerY / CELL_SIZE) * (CELL_SIZE) + (horizontalFacingDirection == HorizontalFacingDirection.UP ? -1 : CELL_SIZE);
                 horizontalGridPoint.y = firstHorizontalIntersectionY / CELL_SIZE;
-            }
 
+                // Determine horizontal X
+                int firstHorizontalIntersectionX = (int) (playerX + (playerY - firstHorizontalIntersectionY) / Math.tan(radians));
+                horizontalGridPoint.x = firstHorizontalIntersectionX / CELL_SIZE;
 
-            // Vertical wall searching
-            // Determine vertical X (goed)
-            int firstVerticalIntersectionX = (playerX / CELL_SIZE ) * (CELL_SIZE) + verticalFacingDirection.getValue();
-            verticalGridPoint.x = firstVerticalIntersectionX / CELL_SIZE;
+                int nextX = (int) (CELL_SIZE / Math.tan(radians));
 
-            // Determine vertical Y (niet goed?)
-            int firstVerticalIntersectionY = (int) (playerY + (playerX - firstVerticalIntersectionX) * Math.tan(radians));
-            verticalGridPoint.y = firstVerticalIntersectionY / CELL_SIZE;
+                while (horizontalGridPoint.y >= 0 && horizontalGridPoint.y < GRID_COLUMNS && map[horizontalGridPoint.y][horizontalGridPoint.x] == 0) {
+                    firstHorizontalIntersectionX += nextX;
+                    firstHorizontalIntersectionY += nextY;
 
-            nextX = verticalFacingDirection == VerticalFacingDirection.LEFT ? -CELL_SIZE : CELL_SIZE;
-            nextY = -(int) (CELL_SIZE*Math.tan(radians));
+                    horizontalGridPoint.x = firstHorizontalIntersectionX / CELL_SIZE;
+                    horizontalGridPoint.y = firstHorizontalIntersectionY / CELL_SIZE;
+                }
 
-            while (verticalGridPoint.y >= 0 && verticalGridPoint.y < GRID_ROWS && map[verticalGridPoint.y][verticalGridPoint.x] != MAP_WALL_DEFAULT) {
-
-                firstVerticalIntersectionX += nextX;
-                firstVerticalIntersectionY += nextY;
-
+                // Vertical wall searching
+                // Determine vertical X (goed)
+                int firstVerticalIntersectionX = (playerX / CELL_SIZE) * (CELL_SIZE) + verticalFacingDirection.getValue();
                 verticalGridPoint.x = firstVerticalIntersectionX / CELL_SIZE;
+
+                // Determine vertical Y (niet goed?)
+                int firstVerticalIntersectionY = (int) (playerY + (playerX - firstVerticalIntersectionX) * Math.tan(radians));
                 verticalGridPoint.y = firstVerticalIntersectionY / CELL_SIZE;
 
+                nextX = verticalFacingDirection == VerticalFacingDirection.LEFT ? -CELL_SIZE : CELL_SIZE;
+                nextY = -(int) (CELL_SIZE * Math.tan(radians));
+
+                while (verticalGridPoint.y >= 0 && verticalGridPoint.y < GRID_ROWS && map[verticalGridPoint.y][verticalGridPoint.x] == 0) {
+                    firstVerticalIntersectionX += nextX;
+                    firstVerticalIntersectionY += nextY;
+
+                    verticalGridPoint.x = firstVerticalIntersectionX / CELL_SIZE;
+                    verticalGridPoint.y = firstVerticalIntersectionY / CELL_SIZE;
+                }
+
+                // determine the closest point relative to the player position
+                // TODO: discriminate between hit or not here, now it just checks the closest and returns it
+                float horizontalDistance = (float) Math.abs((playerX - firstHorizontalIntersectionX) / Math.cos(radians));
+                float verticalDistance = (float) Math.abs((playerX - firstVerticalIntersectionX) / Math.cos(radians));
+
+                statistics.setHorizontalGridHitX(horizontalGridPoint.x);
+                statistics.setHorizontalGridHitY(horizontalGridPoint.y);
+                statistics.setVerticalGridHitX(verticalGridPoint.x);
+                statistics.setVerticalGridHitY(verticalGridPoint.y);
+                statistics.setHorizontalDistance(horizontalDistance);
+                statistics.setVerticalDistance(verticalDistance);
+
+                statistics.setFirstVerticalIntersectionX(firstVerticalIntersectionX);
+                statistics.setFirstVerticalIntersectionY(firstVerticalIntersectionY);
+
+                statistics.setFirstHorizontalIntersectionX(firstHorizontalIntersectionX);
+                statistics.setFirstHorizontalIntersectionY(firstHorizontalIntersectionY);
+
+
+                if (horizontalDistance < verticalDistance) {
+                    distance = (int) horizontalDistance;
+                    gridPointToDraw = horizontalGridPoint;
+                } else if (verticalDistance < horizontalDistance) {
+                    distance = (int) verticalDistance;
+                    gridPointToDraw = verticalGridPoint;
+                } else if (horizontalDistance == verticalDistance) {
+                    // because both are the same, doesn't matter which one to return
+                    distance = (int) horizontalDistance;
+                    gridPointToDraw = horizontalGridPoint;
+                }
+
+
+                if (gridPointToDraw.x >= 0 && gridPointToDraw.y < GRID_COLUMNS && gridPointToDraw.y >= 0 && gridPointToDraw.y < GRID_ROWS) {
+                    isWall = map[gridPointToDraw.y][gridPointToDraw.x] > 0;
+
+                    g2.setColor(getWallColor(map[gridPointToDraw.y][gridPointToDraw.x]));
+
+                    System.out.println("column = " + rayColumnIndex + "/walltype=" +map[gridPointToDraw.y][gridPointToDraw.x] + "/angle=" + angle + "/grid.x=" + gridPointToDraw.x + "/grid.y="+gridPointToDraw.y);
+
+                    if (isWall && distance > 0) {
+
+                        int wallHeight = (CELL_SIZE / distance * distanceProjectionPlane);
+                        int center = 200;
+                        int topOfWall = center + wallHeight;
+                        int bottomOfWall = center - wallHeight;
+
+                        g2.drawLine(1100 - rayColumnIndex, 100, 1100-rayColumnIndex, 200);
+                    }
+                }
+
             }
 
-            // determine the closest point relative to the player position
-            // TODO: discriminate between hit or not here, now it just checks the closest and returns it
-            float horizontalDistance = (float) Math.abs((playerX-firstHorizontalIntersectionX)/Math.cos(radians));
-            float verticalDistance = (float) Math.abs((playerX-firstVerticalIntersectionX)/Math.cos(radians));
+        }
 
-            statistics.setHorizontalGridHitX(horizontalGridPoint.x);
-            statistics.setHorizontalGridHitY(horizontalGridPoint.y);
-            statistics.setVerticalGridHitX(verticalGridPoint.x);
-            statistics.setVerticalGridHitY(verticalGridPoint.y);
-            statistics.setHorizontalDistance(horizontalDistance);
-            statistics.setVerticalDistance(verticalDistance);
+        private Color getWallColor(int wallType) {
+            switch (wallType) {
+                case MAP_WALL_DEFAULT : return Color.RED;
+                case MAP_WALL_TWO : return Color.BLUE;
+                case MAP_WALL_THREE : return Color.YELLOW;
+                case MAP_WALL_FOUR : return Color.GREEN;
+                case MAP_WALL_FIVE : return Color.CYAN;
+                case MAP_WALL_SIX : return Color.MAGENTA;
+                case MAP_WALL_SEVEN: return Color.ORANGE;
 
-            statistics.setFirstVerticalIntersectionX(firstVerticalIntersectionX);
-            statistics.setFirstVerticalIntersectionY(firstVerticalIntersectionY);
-
-            statistics.setFirstHorizontalIntersectionX(firstHorizontalIntersectionX);
-            statistics.setFirstHorizontalIntersectionY(firstHorizontalIntersectionY);
-
-
-            if (horizontalDistance < verticalDistance ) {
-                return horizontalGridPoint;
-            } else if (verticalDistance < horizontalDistance) {
-                return verticalGridPoint;
-            } else if (horizontalDistance == verticalDistance){
-                // because both are the same, doesn't matter which one to return
-                return horizontalGridPoint;
+                default: return Color.DARK_GRAY;
             }
-
-            // Should never happen?
-            return new Point();
         }
 
 
@@ -229,7 +273,7 @@ public class RayCaster {
         private void drawPlayer(Graphics2D g2) {
             final int BOUNDING_BOX_SIZE = 5;
 
-            g2.setColor(Color.BLACK);
+            g2.setColor(Color.WHITE);
             g2.drawLine(playerX, playerY, playerX, playerY);
             g2.drawRect(playerX-BOUNDING_BOX_SIZE, playerY-BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE*2, BOUNDING_BOX_SIZE*2);
 
@@ -249,33 +293,13 @@ public class RayCaster {
             g2.drawLine(playerX, playerY, endX2, endY2);
         }
 
-        private void drawPlayerView(Graphics2D graphics2D) {
-            graphics2D.setColor(Color.RED);
-            boolean isWall;
-            Point gridPoint;
-
-            for (int castDegree = 60; castDegree < 120; castDegree++) {
-                gridPoint = getGridPointLookingAt(castDegree);
-
-                if (gridPoint.x >= 0 && gridPoint.y < GRID_COLUMNS && gridPoint.y >= 0 && gridPoint.y < GRID_ROWS) {
-                    isWall = map[gridPoint.y][gridPoint.x] == MAP_WALL_DEFAULT;
-
-                    if (isWall) {
-                        System.out.println("Is wall: " + castDegree);
-                        graphics2D.drawLine(900 - castDegree, 10, 900 - castDegree, 100);
-                    }
-                }
-            }
-
-        }
-
 
         private void drawMap(Graphics2D graphics2D) {
 
             for (int x = 0; x<GRID_COLUMNS; x++) {
                 for (int y = 0; y<GRID_ROWS; y++) {
                     // Draw the walls orange
-                    graphics2D.setColor(map[y][x] == MAP_WALL_DEFAULT ? Color.ORANGE: Color.PINK);
+                    graphics2D.setColor(getWallColor(map[y][x]));
 
                     // Draw the cell
                     graphics2D.fillRect(x*CELL_SIZE , y*CELL_SIZE , CELL_SIZE , CELL_SIZE  );
